@@ -42,7 +42,6 @@ yaml
 Copy code
 
 **Architecture Diagram:**  
-Create using a tool like Draw.io and save as `Diagram.png`.
 
 ---
 
@@ -53,8 +52,6 @@ Logistics Provider Breakdown Notification
 → Route Decision Agent
 → n8n Communication Coordination Agent
 
-pgsql
-Copy code
 
 **Components:**
 - **Logistics Provider (Schneider):** Detects truck breakdowns and updates PepsiCo ServiceNow via MCP protocol.
