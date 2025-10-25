@@ -1,238 +1,102 @@
-# Agentic Logistics Incident Response  
-## PepsiCo Supply Chain Incident Processing - ServiceNow Implementation  
+🛰️ Agentic Logistics Incident Response
+PepsiCo Supply Chain Incident Processing — ServiceNow x n8n Implementation
+🏢 Project Story
 
----
+Imagine PepsiCo trucks on the road delivering to major clients like Whole Foods. One breaks down. Normally that triggers hours of coordination (finance, logistics, customer notifications, and lots of manual updates)
 
-## System Overview  
+The task was to build a system inside ServiceNow AI Agent Studio that automatically handles the chaos. It calculates how much the delay costs based on the customer’s contract, finds the best reroute option, and then coordinates the whole recovery effort through n8n — connecting ServiceNow, logistics, and retail systems all in one flow.
+<img width="2452" height="1114" alt="image" src="https://github.com/user-attachments/assets/5c2976b4-97e7-45b7-98cf-5f33852056c9" />
 
-### **Company Context**  
-Maintaining reliable supply chain operations is critical for PepsiCo to deliver products to major retail partners like Whole Foods. When delivery trucks experience breakdowns, rapid response and resolution are essential to minimize financial and operational impact.  
 
-### **Business Problem**  
-PepsiCo’s logistics operations required an intelligent system to:  
-- Automatically calculate delay costs based on customer contracts.  
-- Select optimal rerouting options considering both financial impact and delivery constraints.  
-- Coordinate execution with external logistics providers and customer notifications without manual intervention.  
+🎯 Desired Goal
+Create a system that makes intelligent decisions on its own, communicate with other systems, and handle errors gracefully.
 
-### **Project Goal**  
-Develop an automated supply chain incident processing system leveraging:  
-- **ServiceNow AI Agents**  
-- **n8n Workflow Orchestration**  
+🧠 How I Built It
+1️⃣ Core Setup
 
-This system aims to reduce manual effort and improve operational efficiency.  
+Scoped app: PepsiCo Deliveries (x_snc_pepsico_de_0)
 
----
+Custom tables:
 
-## Prerequisites  
+Delivery Delay: Tracks route incidents, route options, and agent status updates.
 
-To work with this solution, you should have:  
-- **ServiceNow AI Agent Studio** expertise.  
-- Basic understanding of **n8n workflow design**.  
-- Familiarity with **system integration concepts**.  
-- Access credentials:  
-  - ServiceNow MCP Bearer token.  
-  - AWS Bedrock access keys for AI model integration.  
-- **JavaScript knowledge** for script tool implementation.  
+Supply Agreement: Holds customer-specific delivery windows and penalty rates.
 
----
+Added sample data for Whole Foods to simulate real financial penalties.
 
-## Repository Setup  
+2️⃣ Agent 1 – Route Financial Analysis Agent
+<img width="1848" height="829" alt="image" src="https://github.com/user-attachments/assets/a8dfa5a0-6908-41d1-81a0-ee9a127967df" />
 
-**Repository Name:** `agentic-logistics-incident-response`  
 
-### Directory Structure  
-```
-/agentic-logistics-incident-response  
-├── README.md  
-├── agentic-logistics-incident-response.xml  
-├── n8n-workflow.json  
-├── n8n-execution.log  
-├── Diagram.png  
-```
+This agent acts like PepsiCo’s financial analyst on autopilot.
+It reads the delivery delay record, cross-references the Supply Agreement, and calculates how much each possible reroute would cost if a truck is late.
+Then it writes the result back to the record and even creates an incident for visibility.
 
-### Architecture Diagram  
-*(Placeholder for architecture diagram image)*  
+Tools Used:
 
----
+Record Lookups
 
-## System Component Flow  
+Script Tool (CalculateFinancialImpact)
 
-### **High-Level Workflow**  
-1. **Logistics Provider Breakdown Notification**  
-2. **PepsiCo ServiceNow Financial Analysis Agent**  
-3. **Route Decision Agent**  
-4. **n8n Communication Coordination Agent**  
+JSON updates to store cost results
 
-### **Components Overview**  
-#### **Logistics Provider (Schneider):**  
-Detects truck breakdowns and updates PepsiCo ServiceNow via MCP protocol.  
+Automated status progression from pending → calculated
 
-#### **ServiceNow AI Agents:**  
-- **Agent 1 – Route Financial Analysis Agent:**  
-  - Calculates delay costs and updates incidents.  
-- **Agent 2 – Route Decision Agent:**  
-  - Selects optimal routing and triggers external execution.  
+3️⃣ Agent 2 – Route Decision Agent
 
-#### **n8n Workflow:**  
-Coordinates external logistics and customer systems, and updates statuses back to ServiceNow.  
+Once Agent 1 finishes its math, this agent takes over.
+It picks the most cost-efficient route based on impact and time, updates the record to approved, and prepares to send the final decision out via n8n.
 
-*(Placeholder for system flow diagram image)*  
+In a real environment, n8n would push that routing info to:
 
----
+Logistics MCP (dispatch new route)
 
-## Implementation Steps  
+Retail MCP (notify customer)
 
-### **Step 1: Application Setup**  
-- Scoped Application Name: `PepsiCo Deliveries`  
-- Auto-generated Scope: `x_snc_pepsico_de_0`  
+ServiceNow MCP (update status to dispatched)
 
----
+N8N Workflow
+<img width="1122" height="531" alt="n8n workflow" src="https://github.com/user-attachments/assets/0e957a83-e285-48ce-9a0c-c7da8c7cfb0f" />
 
-### **Step 2: Tables & Sample Records**  
 
-#### **Delivery Delay Table**  
-| Field             | Type        | Description                          |  
-|-------------------|-------------|--------------------------------------|  
-| `route_id`        | Integer (PK)| Unique route identifier              |  
-| `truck_id`        | Integer     | Truck number                         |  
-| `customer_id`     | Integer     | Default 1                            |  
-| `problem_description` | String  | Breakdown details (4000 chars)       |  
-| `proposed_routes` | String      | JSON array of route options          |  
-| `calculated_impact` | String    | JSON of financial analysis           |  
-| `chosen_option`   | String      | Selected route details               |  
-| `status`          | String (16) | pending / calculated / approved / dispatched |  
-| `assigned_to`     | Reference   | Execution context for AI agents      |  
-| `incident_sys_id` | String      | Links to associated incident record  |  
+🗺️ Architecture Flow
+Delivery Delay Record (pending)
+        ↓
+Agent 1: Financial Analysis (calculates penalties)
+        ↓
+Incident Record Created
+        ↓
+Agent 2: Route Decision (selects best route)
+        ↓
+Webhook → n8n Workflow
+        ↓
+→ Logistics MCP (executes reroute)
+→ Retail MCP (notifies customer)
+→ ServiceNow MCP (updates status)
 
-**Sample Record:**  
-```json
-{
-  "route_id": 741379,
-  "status": "pending",
-  "problem_description": "Breakdown at I-95 MM 27 (engine)",
-  "proposed_routes": [
-    {"option_id": "opt-1","route_number": 16,"distance_miles": 92,"eta_minutes": 244},
-    {"option_id": "opt-2","route_number": 20,"distance_miles": 145,"eta_minutes": 319},
-    {"option_id": "opt-3","route_number": 8,"distance_miles": 78,"eta_minutes": 195}
-  ],
-  "truck_id": 39531,
-  "customer_id": 1
-}
-```
 
-#### **Supply Agreement Table**  
-| Field               | Type        | Description                         |  
-|---------------------|-------------|-------------------------------------|  
-| `customer_id`       | Integer (PK)| Unique customer ID                  |  
-| `customer_name`     | String      | Customer name (100 chars)           |  
-| `deliver_window_hours` | Integer  | Contractual delivery window         |  
-| `stockout_penalty_rate` | Integer | Cost per hour of delay ($)          |  
+(see Diagram.png in repo)
 
-**Sample Record:**  
-```json
-{
-  "customer_id": 1,
-  "customer_name": "Whole Foods",
-  "deliver_window_hours": 3,
-  "stockout_penalty_rate": 250
-}
-```
+⚙️ If I had more time, I’d add
 
----
+Parallel processing for multiple routes
 
-### **Step 3: Use Case & Trigger Configuration**  
-- **Trigger Table:** `Delivery Delay`  
-- **Condition:** `Status = "pending"`  
-- **Run As:** User referenced in `assigned_to` field.  
-- **Testing:** Use AI Agent Studio to manually test triggers with sample `route_id`.  
+Slack/Teams integration for real-time approval alerts
 
----
 
-### **Step 4: AI Agent Architecture**  
+📊 Business Value
 
-#### **Agent 1 – Route Financial Analysis Agent**  
-- **Purpose:** Calculate financial impact of delivery disruptions.  
-- **Tools:** Record lookup, incident creation, status updates.  
-- **Responsibilities:**  
-  - Query supply agreement and delivery delay data.  
-  - Calculate delay costs per route.  
-  - Create incident records and update delivery table.  
-  - Progress workflow to the next agent.  
+This system takes what woud used to be hours of manual back-and-forth and turns it into an intelligent, automated process.
 
-#### **Agent 2 – Route Decision Agent**  
-- **Purpose:** Select optimal routes and trigger external execution.  
-- **Tools:** Record lookup, route selection, webhook for n8n.  
-- **Responsibilities:**  
-  - Analyze route options considering cost and delivery constraints.  
-  - Update incident priority.  
-  - Trigger n8n workflow via webhook.  
-  - Set workflow status to `approved`.  
+For a company like PepsiCo, that means:
 
----
+Faster response when deliveries fail
 
-### **Step 5: n8n Workflow & Logging**  
+Fewer missed SLAs and financial penalties
 
-#### **Required Nodes:**  
-- Webhook (receives routing decisions).  
-- AI Agent (coordinates external calls).  
-- AWS Bedrock Chat Model.  
-- Logistics MCP Client.  
-- Retail MCP Client.  
-- ServiceNow MCP Client.  
-- Webhook Response.  
+Less manual coordination across systems
 
-#### **MCP Client Payload Examples:**  
-**Logistics MCP Client:**  
-```json
-{
-  "route_id": "751526",
-  "truck_id": "1130",
-  "chosen_option": {"option_id": "opt-2","route_number": 2,"distance_miles": 300,"eta_minutes": 103}
-}
-```  
+Data-driven decisions made in seconds
 
-**ServiceNow MCP Client:**  
-```json
-{
-  "route_id": "751526",
-  "status": "dispatched"
-}
-```
+It’s a perfect example of how AI agents and workflow orchestration can transform operations at enterprise scale.
 
-*(Placeholder for n8n workflow diagram image)*  
-
----
-
-### **Step 6: Testing & Validation**  
-- Validate Agent 1 calculates financial impacts on pending Delivery Delay records.  
-- Confirm Agent 2 executes route selection after Agent 1.  
-- Verify n8n workflow coordinates external systems.  
-- Check workflow status progression: `pending → calculated → approved → dispatched`.  
-- Validate incident creation, priority management, and status updates.  
-
----
-
-## Optimization  
-
-- **Webhook URL** configured as a variable for maintainability.  
-- Efficient record lookups to reduce API calls.  
-
----
-
-## Business Value  
-
-- Reduces manual intervention in supply chain disruptions.  
-- Minimizes financial penalties and optimizes delivery routes.  
-- Provides end-to-end visibility and execution tracking.  
-- Demonstrates scalable, AI-driven supply chain automation.  
-
----
-
-## Deliverables  
-
-- ServiceNow Update Set with all AI Agent Studio components.  
-- n8n workflow (`n8n-workflow.json`) and execution log (`n8n-execution.log`).  
-- Sample Delivery Delay and Supply Agreement records.  
-- Architecture diagram (`Diagram.png`).  
-
-*(Placeholder for summary image or diagram)*  
