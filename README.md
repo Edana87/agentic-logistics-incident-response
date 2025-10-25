@@ -1,5 +1,4 @@
-🛰️ Agentic Logistics Incident Response
-PepsiCo Supply Chain Incident Processing — ServiceNow x n8n Implementation
+🛰️ Agentic Logistics Incident Response (PepsiCo Supply Chain Incident Processing)
 🏢 Project Story
 
 Imagine PepsiCo trucks on the road delivering to major clients like Whole Foods. One breaks down. Normally that triggers hours of coordination (finance, logistics, customer notifications, and lots of manual updates)
